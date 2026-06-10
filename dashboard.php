@@ -1,11 +1,20 @@
 <?php
 session_start();
-// Memastikan hanya user dengan role murid yang bisa mengakses
-if($_SESSION['role'] != 'murid') {
+
+// 1. Validasi pastikan yang masuk adalah murid
+if (!isset($_SESSION['role']) || $_SESSION['role'] != 'murid') {
     header("Location: ../auth/login.php");
     exit;
 }
+
+// 2. Koneksi ke database
+$koneksi = mysqli_connect("localhost", "root", "", "ujian_online");
+
+// 3. Ambil ID murid dari session untuk mencari nilainya
+$user_id = $_SESSION['id'];
+$query_nilai = mysqli_query($koneksi, "SELECT * FROM hasil_ujian WHERE user_id = '$user_id' ORDER BY tanggal DESC");
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -14,15 +23,65 @@ if($_SESSION['role'] != 'murid') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container mt-5 text-center" style="max-width: 600px;">
-    <div class="card p-5 shadow border-0">
-        <h3 class="mb-3">Selamat Datang, <b><?= htmlspecialchars($_SESSION['nama']); ?></b>! 🎓</h3>
-        <p class="text-muted">Anda telah login ke sistem ujian online. Pastikan persiapan dan koneksi internet Anda stabil sebelum menekan tombol mulai di bawah ini.</p>
-        <div class="mt-4">
-            <a href="ujian.php" class="btn btn-lg btn-success px-5 shadow-sm">Mulai Ujian</a>
-            <a href="../auth/logout.php" class="btn btn-lg btn-outline-danger px-4 ms-2">Logout</a>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="#">Panel Murid</a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link text-danger fw-bold" href="../auth/logout.php">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <div class="card shadow-sm border-0 mb-4 text-white bg-success">
+        <div class="card-body p-4">
+            <h2 class="fw-bold">Selamat Datang, <?= htmlspecialchars($_SESSION['nama']); ?>! 👋</h2>
+            <p class="mb-0">Silakan klik tombol di bawah untuk mulai mengerjakan ujian pilihan ganda yang tersedia.</p>
+            <a href="ujian.php" class="btn btn-light text-success fw-bold mt-3 px-4">Mulai Ujian Sekarang</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-bold">Riwayat Nilai Ujian Kamu</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                    <thead class="table-dark text-center">
+                        <tr>
+                            <th width="10%">No</th>
+                            <th>Jumlah Benar</th>
+                            <th>Jumlah Salah</th>
+                            <th>Nilai Akhir</th>
+                            <th>Tanggal Ujian</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $no = 1;
+                        if (mysqli_num_rows($query_nilai) > 0) {
+                            while ($row = mysqli_fetch_assoc($query_nilai)) { ?>
+                                <tr class="text-center">
+                                    <td><?= $no++; ?></td>
+                                    <td class="text-success fw-bold"><?= $row['jumlah_benar']; ?></td>
+                                    <td class="text-danger fw-bold"><?= $row['jumlah_salah']; ?></td>
+                                    <td class="fw-bold text-primary fs-5"><?= $row['nilai']; ?></td>
+                                    <td><?= date('d-m-Y H:i', strtotime($row['tanggal'])); ?></td>
+                                </tr>
+                            <?php } 
+                        } else { ?>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Kamu belum pernah mengikuti ujian.</td>
+                            </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+
 </body>
 </html>
